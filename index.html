@@ -11,64 +11,67 @@
     <h2>카카오 주소 검색</h2>
     <input type="text" id="search" placeholder="주소 입력" />
     <button onclick="searchAddress()">검색</button>
-    <div id="map" style="width:100%;height:300px;"></div>
+    <div id="search_result"></div>
     <input type="text" id="selected_address" readonly />
     <button onclick="sendToAppSheet()">주소 선택</button>
 
     <script>
-    var map, geocoder; // 전역 변수 선언
+        var geocoder; // Geocoder 객체
 
-    document.addEventListener("DOMContentLoaded", function () {
-        if (typeof kakao === "undefined" || !kakao.maps) {
-            alert("카카오 지도 API가 로드되지 않았습니다. API 키 또는 도메인 등록을 확인하세요.");
-            return;
-        }
-
-        // 지도 초기화
-        var mapContainer = document.getElementById('map'); // 지도를 표시할 div
-        var mapOption = {
-            center: new kakao.maps.LatLng(37.5665, 126.9780), // 지도의 중심 좌표
-            level: 3 // 지도 확대 레벨
-        };
-        map = new kakao.maps.Map(mapContainer, mapOption); // 지도 생성
-        geocoder = new kakao.maps.services.Geocoder(); // Geocoder 객체 생성
-    });
-
-    // 주소 검색 함수
-    function searchAddress() {
-        var keyword = document.getElementById('search').value;
-        if (!keyword) {
-            alert("주소를 입력해주세요.");
-            return;
-        }
-        if (!geocoder) {
-            alert("Geocoder 객체가 초기화되지 않았습니다. 페이지를 새로고침하세요.");
-            return;
-        }
-        geocoder.addressSearch(keyword, function(result, status) {
-            if (status === kakao.maps.services.Status.OK) {
-                var coords = new kakao.maps.LatLng(result[0].y, result[0].x);
-                var marker = new kakao.maps.Marker({
-                    map: map,
-                    position: coords
-                });
-                map.setCenter(coords); // 지도 중심 이동
-                document.getElementById('selected_address').value = result[0].address_name; // 결과 표시
-            } else {
-                alert("검색 결과가 없습니다. 다시 시도해주세요.");
+        document.addEventListener("DOMContentLoaded", function () {
+            if (typeof kakao === "undefined" || !kakao.maps) {
+                alert("카카오 지도 API가 로드되지 않았습니다. API 키 또는 도메인 등록을 확인하세요.");
+                return;
             }
+            geocoder = new kakao.maps.services.Geocoder(); // Geocoder 객체 생성
         });
-    }
 
-    // 선택된 주소를 AppSheet로 전송
-    function sendToAppSheet() {
-        var address = document.getElementById('selected_address').value;
-        if (address) {
-            window.parent.postMessage({ address: address }, "*");
-        } else {
-            alert("선택된 주소가 없습니다.");
+        // 주소 검색 함수
+        function searchAddress() {
+            var keyword = document.getElementById('search').value; // 입력된 검색어
+            if (!keyword) {
+                alert("주소를 입력해주세요.");
+                return;
+            }
+            if (!geocoder) {
+                alert("Geocoder 객체가 초기화되지 않았습니다. 페이지를 새로고침하세요.");
+                return;
+            }
+
+            // 검색 수행
+            geocoder.addressSearch(keyword, function(result, status) {
+                if (status === kakao.maps.services.Status.OK) {
+                    // 결과 표시
+                    var addressList = result.map(function(item, index) {
+                        return `
+                            <div>
+                                <button onclick="selectAddress('${item.address_name}')">
+                                    ${item.address_name}
+                                </button>
+                            </div>
+                        `;
+                    }).join('');
+                    document.getElementById('search_result').innerHTML = addressList;
+                } else {
+                    alert("검색 결과가 없습니다. 다시 시도해주세요.");
+                }
+            });
         }
-    }
-</script>
+
+        // 주소 선택 함수
+        function selectAddress(address) {
+            document.getElementById('selected_address').value = address; // 선택된 주소 표시
+        }
+
+        // AppSheet로 데이터 전송
+        function sendToAppSheet() {
+            var address = document.getElementById('selected_address').value;
+            if (address) {
+                window.parent.postMessage({ address: address }, "*");
+            } else {
+                alert("선택된 주소가 없습니다.");
+            }
+        }
+    </script>
 </body>
 </html>
