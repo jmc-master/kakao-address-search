@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>주소 검색</title>
+    <title>카카오 주소 검색</title>
+    <!-- 카카오 지도 API 스크립트 -->
     <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9b058e6ff4ec490d0701091f533e8d7f&libraries=services"></script>
 </head>
 <body>
@@ -15,16 +16,22 @@
     <button onclick="sendToAppSheet()">주소 선택</button>
 
     <script>
-        var mapContainer = document.getElementById('map');
+        // 지도 초기화
+        var mapContainer = document.getElementById('map'); // 지도를 표시할 div
         var mapOption = {
-            center: new kakao.maps.LatLng(37.5665, 126.9780),
-            level: 3
+            center: new kakao.maps.LatLng(37.5665, 126.9780), // 지도의 중심좌표
+            level: 3 // 지도의 확대 레벨
         };
-        var map = new kakao.maps.Map(mapContainer, mapOption);
-        var geocoder = new kakao.maps.services.Geocoder();
+        var map = new kakao.maps.Map(mapContainer, mapOption); // 지도 생성
+        var geocoder = new kakao.maps.services.Geocoder(); // 주소-좌표 변환 객체 생성
 
+        // 주소 검색 함수
         function searchAddress() {
-            var keyword = document.getElementById('search').value;
+            var keyword = document.getElementById('search').value; // 입력된 검색어
+            if (!keyword) {
+                alert("주소를 입력해주세요.");
+                return;
+            }
             geocoder.addressSearch(keyword, function(result, status) {
                 if (status === kakao.maps.services.Status.OK) {
                     var coords = new kakao.maps.LatLng(result[0].y, result[0].x);
@@ -32,14 +39,15 @@
                         map: map,
                         position: coords
                     });
-                    map.setCenter(coords);
-                    document.getElementById('selected_address').value = result[0].address_name;
+                    map.setCenter(coords); // 지도 중심 이동
+                    document.getElementById('selected_address').value = result[0].address_name; // 결과 표시
                 } else {
-                    alert("주소를 찾을 수 없습니다. 다시 입력해주세요.");
+                    alert("검색 결과가 없습니다. 다시 시도해주세요.");
                 }
             });
         }
 
+        // AppSheet로 데이터 전송
         function sendToAppSheet() {
             var address = document.getElementById('selected_address').value;
             if (address) {
