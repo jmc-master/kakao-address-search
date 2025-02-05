@@ -16,29 +16,33 @@
     <button onclick="sendToAppSheet()">주소 선택</button>
 
     <script>
-    var map, geocoder; // 전역 변수로 선언
+    var map, geocoder; // 전역 변수 선언
 
-    // 지도 초기화
     document.addEventListener("DOMContentLoaded", function () {
-        if (typeof kakao === "undefined") {
+        if (typeof kakao === "undefined" || !kakao.maps) {
             alert("카카오 지도 API가 로드되지 않았습니다. API 키 또는 도메인 등록을 확인하세요.");
             return;
         }
 
+        // 지도 초기화
         var mapContainer = document.getElementById('map'); // 지도를 표시할 div
         var mapOption = {
-            center: new kakao.maps.LatLng(37.5665, 126.9780), // 지도의 중심좌표
-            level: 3 // 지도의 확대 레벨
+            center: new kakao.maps.LatLng(37.5665, 126.9780), // 지도의 중심 좌표
+            level: 3 // 지도 확대 레벨
         };
         map = new kakao.maps.Map(mapContainer, mapOption); // 지도 생성
-        geocoder = new kakao.maps.services.Geocoder(); // 주소-좌표 변환 객체 생성
+        geocoder = new kakao.maps.services.Geocoder(); // Geocoder 객체 생성
     });
 
     // 주소 검색 함수
     function searchAddress() {
-        var keyword = document.getElementById('search').value; // 입력된 검색어
+        var keyword = document.getElementById('search').value;
         if (!keyword) {
             alert("주소를 입력해주세요.");
+            return;
+        }
+        if (!geocoder) {
+            alert("Geocoder 객체가 초기화되지 않았습니다. 페이지를 새로고침하세요.");
             return;
         }
         geocoder.addressSearch(keyword, function(result, status) {
@@ -56,11 +60,13 @@
         });
     }
 
-    // AppSheet로 데이터 전송
+    // 선택된 주소를 AppSheet로 전송
     function sendToAppSheet() {
         var address = document.getElementById('selected_address').value;
         if (address) {
             window.parent.postMessage({ address: address }, "*");
+        } else {
+            alert("선택된 주소가 없습니다.");
         }
     }
 </script>
