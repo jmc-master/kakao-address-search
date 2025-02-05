@@ -16,51 +16,52 @@
     <button onclick="sendToAppSheet()">주소 선택</button>
 
     <script>
-        // 지도 초기화
-        document.addEventListener("DOMContentLoaded", function () {
-            if (typeof kakao === "undefined") {
-                alert("카카오 지도 API가 로드되지 않았습니다. API 키 또는 도메인을 확인하세요.");
-                return;
-            }
+    // 지도 초기화
+    var map, geocoder; // 전역 변수로 선언
+    document.addEventListener("DOMContentLoaded", function () {
+        if (typeof kakao === "undefined") {
+            alert("카카오 지도 API가 로드되지 않았습니다. API 키 또는 도메인을 확인하세요.");
+            return;
+        }
 
-            var mapContainer = document.getElementById('map'); // 지도를 표시할 div
-            var mapOption = {
-                center: new kakao.maps.LatLng(37.5665, 126.9780), // 지도의 중심좌표
-                level: 3 // 지도의 확대 레벨
-            };
-            var map = new kakao.maps.Map(mapContainer, mapOption); // 지도 생성
-            var geocoder = new kakao.maps.services.Geocoder(); // 주소-좌표 변환 객체 생성
+        var mapContainer = document.getElementById('map'); // 지도를 표시할 div
+        var mapOption = {
+            center: new kakao.maps.LatLng(37.5665, 126.9780), // 지도의 중심좌표
+            level: 3 // 지도의 확대 레벨
+        };
+        map = new kakao.maps.Map(mapContainer, mapOption); // 지도 생성
+        geocoder = new kakao.maps.services.Geocoder(); // 주소-좌표 변환 객체 생성
+    });
 
-            // 주소 검색 함수
-            window.searchAddress = function () {
-                var keyword = document.getElementById('search').value; // 입력된 검색어
-                if (!keyword) {
-                    alert("주소를 입력해주세요.");
-                    return;
-                }
-                geocoder.addressSearch(keyword, function(result, status) {
-                    if (status === kakao.maps.services.Status.OK) {
-                        var coords = new kakao.maps.LatLng(result[0].y, result[0].x);
-                        var marker = new kakao.maps.Marker({
-                            map: map,
-                            position: coords
-                        });
-                        map.setCenter(coords); // 지도 중심 이동
-                        document.getElementById('selected_address').value = result[0].address_name; // 결과 표시
-                    } else {
-                        alert("검색 결과가 없습니다. 다시 시도해주세요.");
-                    }
+    // 주소 검색 함수 (전역 함수로 정의)
+    function searchAddress() {
+        var keyword = document.getElementById('search').value; // 입력된 검색어
+        if (!keyword) {
+            alert("주소를 입력해주세요.");
+            return;
+        }
+        geocoder.addressSearch(keyword, function(result, status) {
+            if (status === kakao.maps.services.Status.OK) {
+                var coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+                var marker = new kakao.maps.Marker({
+                    map: map,
+                    position: coords
                 });
-            };
-
-            // AppSheet로 데이터 전송
-            window.sendToAppSheet = function () {
-                var address = document.getElementById('selected_address').value;
-                if (address) {
-                    window.parent.postMessage({ address: address }, "*");
-                }
-            };
+                map.setCenter(coords); // 지도 중심 이동
+                document.getElementById('selected_address').value = result[0].address_name; // 결과 표시
+            } else {
+                alert("검색 결과가 없습니다. 다시 시도해주세요.");
+            }
         });
-    </script>
+    }
+
+    // AppSheet로 데이터 전송 (전역 함수로 정의)
+    function sendToAppSheet() {
+        var address = document.getElementById('selected_address').value;
+        if (address) {
+            window.parent.postMessage({ address: address }, "*");
+        }
+    }
+</script>
 </body>
 </html>
