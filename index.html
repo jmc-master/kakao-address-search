@@ -2,74 +2,151 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>주소 검색</title>
-    <!-- 카카오 지도 API 스크립트 -->
-    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=07c275320ba49a9f7a5c8b3a2aefff7b&libraries=services"></script>
+    <title>키워드로 장소검색하고 목록으로 표출하기</title>
+    <style>
+        .map_wrap, .map_wrap * {
+            margin: 0;
+            padding: 0;
+            font-family: 'Malgun Gothic', dotum, '돋움', sans-serif;
+            font-size: 12px;
+        }
+        #menu_wrap {
+            width: 100%;
+            margin: 10px auto;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 12px;
+            border-radius: 10px;
+        }
+        #placesList li {
+            list-style: none;
+            border-bottom: 1px solid #888;
+            padding: 10px 0;
+        }
+        #placesList .info {
+            display: flex;
+            flex-direction: column;
+        }
+        #placesList .info h5 {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        #placesList .info .gray {
+            color: #8a8a8a;
+        }
+        #pagination {
+            margin: 10px auto;
+            text-align: center;
+        }
+        #pagination a {
+            display: inline-block;
+            margin-right: 10px;
+        }
+        #pagination .on {
+            font-weight: bold;
+            color: #777;
+        }
+    </style>
 </head>
 <body>
-    <h2>주소 검색</h2>
-    <input type="text" id="search" placeholder="주소 입력" />
-    <button onclick="searchAddress()">검색</button>
-    <div id="search_result"></div>
-    <input type="text" id="selected_address" readonly />
-    <button onclick="sendToAppSheet()">주소 선택</button>
+    <div id="menu_wrap">
+        <div>
+            <form onsubmit="searchPlaces(); return false;">
+                키워드: <input type="text" value="이태원 맛집" id="keyword" size="15">
+                <button type="submit">검색하기</button>
+            </form>
+        </div>
+        <hr>
+        <ul id="placesList"></ul>
+        <div id="pagination"></div>
+    </div>
 
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=07c275320ba49a9f7a5c8b3a2aefff7b&libraries=services"></script>
     <script>
-        var geocoder; // Geocoder 객체
+        var ps = new kakao.maps.services.Places(); // 장소 검색 객체
+        var markers = []; // 마커 배열 (필요하지 않으므로 제거 가능)
 
-        document.addEventListener("DOMContentLoaded", function () {
-            if (typeof kakao === "undefined" || !kakao.maps) {
-                alert("카카오 지도 API가 로드되지 않았습니다. API 키 또는 도메인 등록을 확인하세요.");
-                return;
-            }
-            geocoder = new kakao.maps.services.Geocoder(); // Geocoder 객체 생성
-        });
+        // 키워드 검색 요청
+        function searchPlaces() {
+            var keyword = document.getElementById('keyword').value;
 
-        // 주소 검색 함수
-        function searchAddress() {
-            var keyword = document.getElementById('search').value; // 입력된 검색어
-            if (!keyword) {
-                alert("주소를 입력해주세요.");
-                return;
-            }
-            if (!geocoder) {
-                alert("Geocoder 객체가 초기화되지 않았습니다. 페이지를 새로고침하세요.");
-                return;
+            if (!keyword.trim()) {
+                alert('키워드를 입력해주세요!');
+                return false;
             }
 
-            // 검색 수행
-            geocoder.addressSearch(keyword, function(result, status) {
-                if (status === kakao.maps.services.Status.OK) {
-                    // 결과 표시
-                    var addressList = result.map(function(item, index) {
-                        return `
-                            <div>
-                                <button onclick="selectAddress('${item.address_name}')">
-                                    ${item.address_name}
-                                </button>
-                            </div>
-                        `;
-                    }).join('');
-                    document.getElementById('search_result').innerHTML = addressList;
-                } else {
-                    alert("검색 결과가 없습니다. 다시 시도해주세요.");
-                }
-            });
+            ps.keywordSearch(keyword, placesSearchCB); // 장소 검색
         }
 
-        // 주소 선택 함수
-        function selectAddress(address) {
-            document.getElementById('selected_address').value = address; // 선택된 주소 표시
+        // 검색 결과 콜백
+        function placesSearchCB(data, status, pagination) {
+            if (status === kakao.maps.services.Status.OK) {
+                displayPlaces(data); // 검색 결과 표시
+                displayPagination(pagination); // 페이지 번호 표시
+            } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
+                alert('검색 결과가 존재하지 않습니다.');
+            } else if (status === kakao.maps.services.Status.ERROR) {
+                alert('검색 중 오류가 발생했습니다.');
+            }
         }
 
-        // AppSheet로 데이터 전송
-        function sendToAppSheet() {
-            var address = document.getElementById('selected_address').value;
-            if (address) {
-                window.parent.postMessage({ address: address }, "*");
+        // 검색 결과 목록 표시
+        function displayPlaces(places) {
+            var listEl = document.getElementById('placesList');
+            removeAllChildNods(listEl); // 기존 목록 삭제
+
+            for (var i = 0; i < places.length; i++) {
+                var itemEl = getListItem(i, places[i]);
+                listEl.appendChild(itemEl);
+            }
+        }
+
+        // 검색 결과 항목 생성
+        function getListItem(index, place) {
+            var el = document.createElement('li'),
+                itemStr = '<div class="info">' +
+                          '   <h5>' + place.place_name + '</h5>';
+
+            if (place.road_address_name) {
+                itemStr += '    <span>' + place.road_address_name + '</span>' +
+                           '    <span class="gray">' + place.address_name + '</span>';
             } else {
-                alert("선택된 주소가 없습니다.");
+                itemStr += '    <span>' + place.address_name + '</span>';
+            }
+
+            itemStr += '</div>';
+            el.innerHTML = itemStr;
+            return el;
+        }
+
+        // 페이지 번호 표시
+        function displayPagination(pagination) {
+            var paginationEl = document.getElementById('pagination');
+            removeAllChildNods(paginationEl);
+
+            for (var i = 1; i <= pagination.last; i++) {
+                var el = document.createElement('a');
+                el.href = "#";
+                el.innerHTML = i;
+
+                if (i === pagination.current) {
+                    el.className = 'on';
+                } else {
+                    el.onclick = (function (i) {
+                        return function () {
+                            pagination.gotoPage(i);
+                        }
+                    })(i);
+                }
+
+                paginationEl.appendChild(el);
+            }
+        }
+
+        // 모든 자식 요소 삭제
+        function removeAllChildNods(el) {
+            while (el.hasChildNodes()) {
+                el.removeChild(el.lastChild);
             }
         }
     </script>
